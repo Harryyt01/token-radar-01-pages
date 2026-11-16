@@ -166,11 +166,27 @@
         ctx.strokeStyle = col;
         ctx.lineWidth = b.t.key === selectedKey ? 2.5 : 1.2;
         ctx.stroke();
-        ctx.fillStyle = '#eef2f7';
-        ctx.font = '600 ' + Math.max(9, Math.min(12, b.r * 0.55)) + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+      });
+      // labels: largest bubbles first, skip any label whose box would overlap one
+      // already drawn (dense clusters stay readable), with a dark halo.
+      var drawn = [];
+      tokens.slice().sort(function (a, b) { return b.r - a.r; }).forEach(function (b) {
+        var size = Math.max(9, Math.min(12, b.r * 0.55));
+        ctx.font = '600 ' + size + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+        var label = b.t.symbol.length > 6 ? b.t.symbol.slice(0, 6) : b.t.symbol;
+        var w = ctx.measureText(label).width;
+        var box = { x: b.x - w / 2 - 3, y: b.y - size * 0.7, w: w + 6, h: size * 1.4 };
+        for (var i = 0; i < drawn.length; i++) {
+          var o = drawn[i];
+          if (box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y) return;
+        }
+        drawn.push(box);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        var label = b.t.symbol.length > 6 ? b.t.symbol.slice(0, 6) : b.t.symbol;
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = 'rgba(2,6,16,0.75)';
+        ctx.strokeText(label, b.x, b.y);
+        ctx.fillStyle = '#eef2f7';
         ctx.fillText(label, b.x, b.y);
       });
       // center hub

@@ -140,6 +140,23 @@
     return run;
   }
 
+  // GoPlus queue: at most ~1 request per GP_GAP_MS, in order (free tier is tight,
+  // and the badge loader fires several at once across lists).
+  var gpChain = Promise.resolve();
+  var lastGp = 0;
+  var GP_GAP_MS = 400;
+  function gpFetch(url) {
+    var run = gpChain.then(function () {
+      var wait = Math.max(0, GP_GAP_MS - (Date.now() - lastGp));
+      return (wait ? sleep(wait) : Promise.resolve()).then(function () {
+        lastGp = Date.now();
+        return fetchJson(url);
+      });
+    });
+    gpChain = run.then(function () {}, function () {});
+    return run;
+  }
+
   // ---- validation helpers ----
   function isObj(v) { return typeof v === 'object' && v !== null && !Array.isArray(v); }
   function num(v) { var n = typeof v === 'string' ? parseFloat(v) : (typeof v === 'number' ? v : NaN); return isFinite(n) ? n : null; }
@@ -340,11 +357,17 @@
     var key = 'sec:' + gid + ':' + address.toLowerCase();
     var hit = cacheGet(key, TTL.security);
     if (hit) return Promise.resolve(okResult(hit, 'GoPlus (cached)'));
-    return fetchJson(GOPLUS + '/token_security/' + gid + '?contract_addresses=' + encodeURIComponent(address))
+    return gpFetch(GOPLUS + '/token_security/' + gid + '?contract_addresses=' + encodeURIComponent(address))
       .then(function (d) {
-        if (!isObj(d) || d.code !== 1 || !isObj(d.result)) throw new Error('GoPlus returned an unexpected shape');
+        if (!isObj(d)) throw new Error('GoPlus returned an unexpected shape');
+        // A non-1 code (e.g. 5000 "system error", seen on Solana for every token
+        // including USDC/WSOL) means GoPlus did not run the check at all — report
+        // it as unavailable, not as a failed check.
+        if (d.code !== 1 || !isObj(d.result)) return { ok: false, data: null, error: 'GoPlus unavailable for this token right now', source: 'GoPlus', at: Date.now(), unavailable: true };
         var raw = d.result[address.toLowerCase()] || d.result[address] || null;
-        if (!raw) throw new Error('GoPlus has no security record for this token');
+        // GoPlus often has no record for brand-new memecoins: that is "no data",
+        // not a failed check — the UI says so instead of "check failed".
+        if (!raw) return { ok: false, data: null, error: 'GoPlus has no security record for this token', source: 'GoPlus', at: Date.now(), noRecord: true };
         var sec = normalizeSecurity(raw);
         cacheSet(key, sec);
         setFresh('security', 'GoPlus');

@@ -144,7 +144,7 @@
         window.RadarAPI.security(t.chainId, t.address).then(function (res) {
           var el = document.querySelector('[data-risk-for="' + CSS.escape(t.key) + '"]');
           if (!el) return;
-          if (!res.ok) { el.textContent = 'Risk: check failed'; return; }
+          if (!res.ok) { el.textContent = res.noRecord ? 'Risk: no record' : res.unavailable ? 'Risk: unavailable' : 'Risk: check failed'; return; }
           var r = riskScore(res.data);
           el.textContent = 'Risk: ' + r.band + (r.score !== null ? ' ' + r.score : '');
           el.classList.add('band-' + r.band.toLowerCase());
