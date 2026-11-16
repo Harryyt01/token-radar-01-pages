@@ -46,8 +46,21 @@
     var f = API.fresh(key);
     var s = el('p', 'fresh-line' + (f.stale ? ' stale' : ''));
     s.textContent = f.text;
+    // Live label: the panel is built before the data arrives ("Not loaded yet"),
+    // so refresh every live freshness line on a timer instead of leaving a stale
+    // snapshot on screen.
+    s.setAttribute('data-fresh-key', key);
     return s;
   }
+  // Refresh every visible freshness label (source + age) so "Not loaded yet"
+  // flips to the real timestamp once the data lands, and ages stay current.
+  setInterval(function () {
+    document.querySelectorAll('[data-fresh-key]').forEach(function (n) {
+      var f = API.fresh(n.getAttribute('data-fresh-key'));
+      n.textContent = f.text;
+      n.classList.toggle('stale', !!f.stale);
+    });
+  }, 10000);
   function errorPanel(host, message, retryFn) {
     host.innerHTML = '';
     var p = el('div', 'panel error-state');
@@ -625,9 +638,13 @@
 
   // ---------- error boundary ----------
   window.addEventListener('error', function (e) {
+    var msg = e && e.message ? e.message : '';
+    // Benign browser warning (ResizeObserver callbacks that shift layout):
+    // not an app error, so don't flash an alarming banner for it.
+    if (msg.indexOf('ResizeObserver loop') !== -1) return;
     var b = document.getElementById('error-banner');
     if (!b) return;
-    b.textContent = 'Something went wrong in the app (' + (e && e.message ? e.message : 'unknown error') + ') — the rest of the page keeps running.';
+    b.textContent = 'Something went wrong in the app (' + (msg || 'unknown error') + ') — the rest of the page keeps running.';
     b.classList.remove('hidden');
     setTimeout(function () { b.classList.add('hidden'); }, 8000);
   });
