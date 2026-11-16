@@ -167,17 +167,18 @@
         ctx.lineWidth = b.t.key === selectedKey ? 2.5 : 1.2;
         ctx.stroke();
       });
-      // Labels: only the 12 largest bubbles get a label at all (dense clusters
-      // stay readable — the rest are still hoverable/clickable for their name),
-      // largest first, skipping any label whose box would overlap one already
-      // drawn, with a dark halo.
+      // Labels: largest bubbles first, up to 20, skipping any label whose box
+      // (plus an 8px breathing gap) would overlap one already drawn — so a
+      // dense cluster shows 1–2 readable labels while isolated bubbles still
+      // get theirs. Every bubble stays hoverable/clickable for its name.
       var drawn = [];
-      tokens.slice().sort(function (a, b) { return b.r - a.r; }).slice(0, 12).forEach(function (b) {
+      var PAD = 8;
+      tokens.slice().sort(function (a, b) { return b.r - a.r; }).slice(0, 20).forEach(function (b) {
         var size = Math.max(9, Math.min(12, b.r * 0.55));
         ctx.font = '600 ' + size + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         var label = b.t.symbol.length > 6 ? b.t.symbol.slice(0, 6) : b.t.symbol;
         var w = ctx.measureText(label).width;
-        var box = { x: b.x - w / 2 - 3, y: b.y - size * 0.7, w: w + 6, h: size * 1.4 };
+        var box = { x: b.x - w / 2 - 3 - PAD, y: b.y - size * 0.7 - PAD, w: w + 6 + PAD * 2, h: size * 1.4 + PAD * 2 };
         for (var i = 0; i < drawn.length; i++) {
           var o = drawn[i];
           if (box.x < o.x + o.w && box.x + box.w > o.x && box.y < o.y + o.h && box.y + box.h > o.y) return;

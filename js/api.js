@@ -39,11 +39,20 @@
   var GT_CHAINS = ['eth', 'solana', 'base']; // networks polled for trending / new pools
 
   // ---- freshness registry: panel key -> { source, at } ----
+  // ---- freshness metadata: source + fetch time per key ----
   var meta = {};
+  var FRESH_SOURCE = { trending: 'GeckoTerminal', new: 'GeckoTerminal', ohlcv: 'GeckoTerminal', search: 'DexScreener', pairs: 'DexScreener', watchlist: 'DexScreener', security: 'GoPlus' };
   function setFresh(key, source) { meta[key] = { source: source, at: Date.now() }; }
   function fresh(key) {
     var m = meta[key];
-    if (!m) return { text: 'Not loaded yet', stale: true, source: null, at: null };
+    if (!m) {
+      // No fresh fetch in this session yet (data served from cache) — derive
+      // freshness from the cached entry so the panel shows its data age
+      // instead of a stuck "Not loaded yet".
+      var entry = mem.get(key) || lsCache[key] || null;
+      if (!entry) return { text: 'Not loaded yet', stale: true, source: null, at: null };
+      m = { source: (FRESH_SOURCE[key] || 'Cache') + ' (cached)', at: entry.at };
+    }
     var age = Date.now() - m.at;
     return { text: m.source + ' · ' + ago(age) + (age > 120000 ? ' · stale' : ''), stale: age > 120000, source: m.source, at: m.at, ageMs: age };
   }
