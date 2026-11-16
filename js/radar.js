@@ -167,10 +167,12 @@
         ctx.lineWidth = b.t.key === selectedKey ? 2.5 : 1.2;
         ctx.stroke();
       });
-      // labels: largest bubbles first, skip any label whose box would overlap one
-      // already drawn (dense clusters stay readable), with a dark halo.
+      // Labels: only the 12 largest bubbles get a label at all (dense clusters
+      // stay readable — the rest are still hoverable/clickable for their name),
+      // largest first, skipping any label whose box would overlap one already
+      // drawn, with a dark halo.
       var drawn = [];
-      tokens.slice().sort(function (a, b) { return b.r - a.r; }).forEach(function (b) {
+      tokens.slice().sort(function (a, b) { return b.r - a.r; }).slice(0, 12).forEach(function (b) {
         var size = Math.max(9, Math.min(12, b.r * 0.55));
         ctx.font = '600 ' + size + 'px -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
         var label = b.t.symbol.length > 6 ? b.t.symbol.slice(0, 6) : b.t.symbol;
